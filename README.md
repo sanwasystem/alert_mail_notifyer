@@ -1,0 +1,2 @@
+# alert_mail_notifyer
+特定の条件にマッチするメールが届いたらSlackに通知する
