@@ -21,8 +21,9 @@
   "author": "wak",
   "license": "MIT",
   "dependencies": {
+    "aws-toolbox": "git+https://github.com/sanwasystem/aws-toolbox.git",
     "dotenv": "^8.2.0",
-    "aws-toolbox": "git+https://github.com/sanwasystem/aws-toolbox.git"
+    "moment": "^2.24.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.43",
