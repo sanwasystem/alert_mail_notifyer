@@ -1,15 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import moment from "moment";
 import * as env from "../env";
 import * as util from "../util";
+import * as gmail from "./gmail";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+export type MailSearchResultType = gmail.MailSearchResultType;
+export const isMailSearchResultType = gmail.isMailSearchResultType;
+export type MailType = gmail.MailType;
+export const isMailType = gmail.isMailType;
+
 interface MailConfigBase {
   id: string;
   name: string;
   query: string;
   slackChannel: string;
   slackMessage: string;
-  lastReceivedAt: moment.Moment;
+  lastReceivedAt?: moment.Moment;
+  lastCheckedAt?: moment.Moment;
 }
 
 export interface ErrorMailConfig extends MailConfigBase {
@@ -20,6 +27,8 @@ export interface OkMailConfig extends MailConfigBase {
   mailType: "OK";
   notifyAfter: number;
 }
+
+export type MailConfigType = ErrorMailConfig | OkMailConfig;
 
 export type ConfigRecordType = {
   id: string;
@@ -58,6 +67,11 @@ export type ConfigRecordType = {
    * 最後にこのメールが届いたときの日時
    */
   lastReceivedAt?: string;
+
+  /**
+   * 最後にこのメールをチェックしたときの日時
+   */
+  lastCheckedAt?: string;
 };
 
 export const isConfigRecordType = (arg: any): arg is ConfigRecordType => {
@@ -94,23 +108,31 @@ export const isConfigRecordType = (arg: any): arg is ConfigRecordType => {
   if (arg.lastReceivedAt !== undefined && typeof arg.lastReceivedAt !== "string") {
     return false;
   }
+  if (arg.lastCheckedAt !== undefined && typeof arg.lastCheckedAt !== "string") {
+    return false;
+  }
   return true;
 };
 
-export const configToMailType = (config: ConfigRecordType): ErrorMailConfig | OkMailConfig => {
-  let lastReceivedAt: moment.Moment;
-  try {
-    lastReceivedAt = moment(config.lastReceivedAt);
-  } catch (e) {
-    lastReceivedAt = moment();
+const parseTimestamp = (timestamp: string | undefined): moment.Moment | undefined => {
+  if (timestamp === undefined) {
+    return undefined;
   }
+  try {
+    return moment(timestamp);
+  } catch (e) {
+    return undefined;
+  }
+};
 
+export const configToMailType = (config: ConfigRecordType): MailConfigType => {
   const base = {
     id: config.id,
     name: config.name,
     query: config.query,
     slackChannel: config.slackChannel ?? env.defaultSlackChannel,
-    lastReceivedAt: lastReceivedAt
+    lastReceivedAt: parseTimestamp(config.lastReceivedAt),
+    lastCheckedAt: parseTimestamp(config.lastCheckedAt)
   };
 
   switch (config.errorType) {
