@@ -114,25 +114,14 @@ export const isConfigRecordType = (arg: any): arg is ConfigRecordType => {
   return true;
 };
 
-const parseTimestamp = (timestamp: string | undefined): moment.Moment | undefined => {
-  if (timestamp === undefined) {
-    return undefined;
-  }
-  try {
-    return moment(timestamp);
-  } catch (e) {
-    return undefined;
-  }
-};
-
 export const configToMailType = (config: ConfigRecordType): MailConfigType => {
   const base = {
     id: config.id,
     name: config.name,
     query: config.query,
     slackChannel: config.slackChannel ?? env.defaultSlackChannel,
-    lastReceivedAt: parseTimestamp(config.lastReceivedAt),
-    lastCheckedAt: parseTimestamp(config.lastCheckedAt)
+    lastReceivedAt: util.parseTimestamp(config.lastReceivedAt),
+    lastCheckedAt: util.parseTimestamp(config.lastCheckedAt)
   };
 
   switch (config.errorType) {

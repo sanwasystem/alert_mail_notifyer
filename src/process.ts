@@ -19,16 +19,51 @@ type ResultType = {
   messages: object[];
 };
 
-export const processErrorMails = async (record: Types.ErrorMailConfig): Promise<ResultType> => {
+/**
+ * DynamoDBのレコードを更新し、メールに処理済みラベルを付ける
+ * @param record
+ * @param mails
+ */
+const complete = async (configRecord: Types.MailConfigType, mails: Types.MailType[]) => {
+  // DynamoDBのレコードを読み直して更新
+  const record = await config.getRecord(configRecord.id);
+  // 最終チェック時刻を現在時刻で更新
+  record.lastCheckedAt = util.now();
+  // メールが1件以上あるなら最終受信時刻も更新
+  if (mails.length > 0) {
+    record.lastReceivedAt = moment(mails[mails.length - 1].date)
+      .utcOffset(env.utcOffset)
+      .format();
+  }
+  await dynamo
+    .put({
+      TableName: env.dynamoDbTableName,
+      Item: record
+    })
+    .promise();
+
+  // メールにラベル追加
+  await gmail.addLabelAsync(mails.map(x => x.id));
+};
+
+export const processErrorMails = async (record: Types.ErrorMailConfig): Promise<void> => {
   const mails = await gmail.getMails(record.query);
 
-  throw new Error("not implemented");
+  // TODO: Slackにメッセージ送信
+
+  await complete(record, mails);
 };
 
 export const processOkMails = async (record: Types.OkMailConfig): Promise<ResultType> => {
   const mails = await gmail.getMails(record.query);
 
-  if (mails.length === 0) {
+  if (mails.length === 0 && record.lastReceivedAt !== undefined) {
+    // メールがまだ来ていない
+    const elapsedInHours = moment().diff(record.lastReceivedAt, "hours");
+    if (elapsedInHours >= record.notifyAfter) {
+      // TODO: アラートを出す
+    }
+
     return {
       latestTimestamp: undefined,
       slackChannel: record.slackChannel,
@@ -48,21 +83,15 @@ export const process = async () => {
     const _record = Types.configToMailType(record);
     switch (_record.mailType) {
       case "ERROR":
-        processErrorMails(_record);
+        await processErrorMails(_record);
         break;
 
       case "OK":
-        processOkMails(_record);
+        await processOkMails(_record);
         break;
 
       default:
         util.neverComesHere(_record);
     }
-
-    // 最新のレコードを取る
-    const recordToPut = { ...record };
-    recordToPut.lastCheckedAt = moment()
-      .utcOffset(env.utcOffset)
-      .format();
   }
 };

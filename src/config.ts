@@ -19,3 +19,17 @@ export const getAllConfigRecords = async (): Promise<Types.ConfigRecordType[]> =
   const matched = allRecords.filter<Types.ConfigRecordType>(Types.isConfigRecordType);
   return matched;
 };
+
+/**
+ * DynamoDBからレコードを1件取得して返す
+ * @param id
+ */
+export const getRecord = async (id: string): Promise<Types.ConfigRecordType> => {
+  return await toolbox.dynamo.getSingleRecord(
+    dynamoDB,
+    env.dynamoDbTableName,
+    env.dynamoDbKeyName,
+    id,
+    Types.isConfigRecordType
+  );
+};
